@@ -2,7 +2,16 @@ import React, { useState, useEffect, useRef } from 'react'
 
 export default function App() {
   const [scrolled, setScrolled] = useState(false)
+  const [activeSection, setActiveSection] = useState('branches')
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 })
+  
   const sectionsRef = useRef([])
+  const navRefs = useRef({})
+  const navItems = [
+    { id: 'branches', label: 'The Branches' },
+    { id: 'values', label: 'Our Values' },
+    { id: 'about', label: 'The Collection' }
+  ]
 
   useEffect(() => {
     const handleScroll = () => {
@@ -25,7 +34,10 @@ export default function App() {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
           entry.target.classList.add('fade-in-up')
-          observer.unobserve(entry.target)
+          // Update active section when visible
+          if (navItems.some(item => item.id === entry.target.id)) {
+            setActiveSection(entry.target.id)
+          }
         }
       })
     }, observerOptions)
@@ -34,10 +46,44 @@ export default function App() {
       if (section) observer.observe(section)
     })
 
+    // Also observe top level sections that correspond to navigation items
+    navItems.forEach((item) => {
+      const el = document.getElementById(item.id)
+      if (el) observer.observe(el)
+    })
+
     return () => {
       observer.disconnect()
     }
   }, [])
+
+  useEffect(() => {
+    const activeEl = navRefs.current[activeSection]
+    if (activeEl) {
+      setIndicatorStyle({
+        left: activeEl.offsetLeft,
+        width: activeEl.offsetWidth
+      })
+    }
+  }, [activeSection])
+
+  const handleNavClick = (e, id) => {
+    e.preventDefault()
+    const element = document.getElementById(id)
+    if (element) {
+      const offset = 80
+      const bodyRect = document.body.getBoundingClientRect().top
+      const elementRect = element.getBoundingClientRect().top
+      const elementPosition = elementRect - bodyRect
+      const offsetPosition = elementPosition - offset
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      })
+    }
+    setActiveSection(id)
+  }
 
   const addToRefs = (el) => {
     if (el && !sectionsRef.current.includes(el)) {
@@ -57,25 +103,30 @@ export default function App() {
           <span className="font-display-lg text-headline-md text-primary tracking-tight">
             The Heritage Archive
           </span>
-          <div className="flex items-center space-x-8">
-            <a
-              className="text-on-surface-variant hover:text-primary transition-colors duration-300 font-label-sm"
-              href="#branches"
-            >
-              The Branches
-            </a>
-            <a
-              className="text-on-surface-variant hover:text-primary transition-colors duration-300 font-label-sm"
-              href="#values"
-            >
-              Our Values
-            </a>
-            <a
-              className="text-on-surface-variant hover:text-primary transition-colors duration-300 font-label-sm"
-              href="#about"
-            >
-              The Collection
-            </a>
+          <div className="relative flex items-center space-x-8">
+            {navItems.map((item) => (
+              <a
+                key={item.id}
+                ref={(el) => (navRefs.current[item.id] = el)}
+                className={`transition-colors duration-300 font-label-sm pb-1 relative z-10 ${
+                  activeSection === item.id
+                    ? 'text-primary font-semibold'
+                    : 'text-on-surface-variant hover:text-primary'
+                }`}
+                href={`#${item.id}`}
+                onClick={(e) => handleNavClick(e, item.id)}
+              >
+                {item.label}
+              </a>
+            ))}
+            {/* Sliding Underline */}
+            <div
+              className="absolute bottom-0 h-0.5 bg-primary transition-all duration-300 ease-out"
+              style={{
+                left: `${indicatorStyle.left}px`,
+                width: `${indicatorStyle.width}px`
+              }}
+            />
           </div>
         </div>
       </nav>
